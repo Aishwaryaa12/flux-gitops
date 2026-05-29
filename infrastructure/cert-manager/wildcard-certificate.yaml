@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-cralyx-com
+  namespace: cert-manager
+
+spec:
+  secretName: wildcard-cralyx-com-tls
+
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+
+  dnsNames:
+    - "*.cralyx.com"
+    - "cralyx.com"
