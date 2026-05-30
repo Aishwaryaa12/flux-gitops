@@ -58,7 +58,7 @@ spec:
   tls:
     - hosts:
         - vault.cralyx.com
-      secretName: wildcard-cralyx-com-tls
+      secretName: vaultwarden-tls
   rules:
     - host: vault.cralyx.com
       http:
