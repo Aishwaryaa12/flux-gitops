@@ -5,7 +5,7 @@ metadata:
   namespace: monitoring
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.middlewares: monitoring-redirect-to-https@kuberd
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-redirect-to-https@kubernetes
 spec:
   ingressClassName: traefik
   tls:

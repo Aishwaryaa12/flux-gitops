@@ -27,6 +27,8 @@ spec:
           env:
             - name: SIGNUPS_ALLOWED
               value: "false"
+            - name: DOMAIN
+              value: "https://vault.cralyx.com"
           volumeMounts:
             - name: data
               mountPath: /data
@@ -41,8 +43,8 @@ metadata:
   namespace: vaultwarden
 spec:
   ports:
-    - port: 443
-      targetPort: 443
+    - port: 80
+      targetPort: 80
   selector:
     app: vaultwarden
 ---
