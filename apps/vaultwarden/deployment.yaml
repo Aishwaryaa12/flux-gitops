@@ -34,7 +34,8 @@ spec:
               mountPath: /data
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
 ---
 apiVersion: v1
 kind: Service
