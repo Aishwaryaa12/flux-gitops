@@ -53,7 +53,7 @@ spec:
   tls:
     - hosts:
         - linkding.cralyx.com
-      secretName: wildcard-cralyx-com-tls 
+      secretName: linkding-tls 
   rules:
     - host: linkding.cralyx.com
       http:
