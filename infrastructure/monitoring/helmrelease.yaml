@@ -22,3 +22,10 @@ spec:
 
   install:
     createNamespace: false
+
+  values:
+    grafana:
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 5Gi
