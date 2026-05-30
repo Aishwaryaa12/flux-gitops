@@ -1,26 +1,23 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
-
 metadata:
   name: grafana
   namespace: monitoring
-
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-redirect-to-https@kuberd
 spec:
   ingressClassName: traefik
-
   tls:
     - hosts:
         - grafana.cralyx.com
       secretName: grafana-tls
-
   rules:
     - host: grafana.cralyx.com
-
       http:
         paths:
           - path: /
             pathType: Prefix
-
             backend:
               service:
                 name: monitoring-kube-prometheus-stack-grafana

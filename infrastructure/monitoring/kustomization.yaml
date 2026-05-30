@@ -7,3 +7,4 @@ resources:
   - helmrelease.yaml
   - grafana-certificate.yaml
   - grafana-ingress.yaml
+  - global-redirect.yaml
