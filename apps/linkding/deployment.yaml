@@ -29,7 +29,8 @@ spec:
               mountPath: /etc/linkding/data
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim: 
+            claimName: linkding-data
 ---
 apiVersion: v1
 kind: Service
