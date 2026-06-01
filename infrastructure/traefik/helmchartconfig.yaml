@@ -15,6 +15,6 @@ spec:
       websecure:
         hostPort: 443
 
-   providers:
-     kubernetesGateway:
-       enabled: true
+    providers:
+      kubernetesGateway:
+        enabled: true
