@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+
+metadata:
+  name: traefik-gateway
+  namespace: cert-manager
+
+spec:
+  gatewayClassName: traefik
+
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+
+      hostname: "*.cralyx.com"
+
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-cralyx-com-tls
+
+      allowedRoutes:
+        namespaces:
+          from: All
