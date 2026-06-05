@@ -25,6 +25,8 @@ spec:
 
   values:
     grafana:
+      initChownData:
+        enabled: false
       persistence:
         enabled: true
         storageClassName: local-path
