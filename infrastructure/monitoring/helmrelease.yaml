@@ -29,3 +29,9 @@ spec:
         enabled: true
         storageClassName: local-path
         size: 5Gi
+
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://logging-loki.logging.svc.cluster.local:3100
