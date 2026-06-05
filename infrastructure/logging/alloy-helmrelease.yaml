@@ -3,9 +3,11 @@ kind: HelmRelease
 metadata:
   name: alloy
   namespace: flux-system
+
 spec:
   interval: 30m
   targetNamespace: logging
+
   chart:
     spec:
       chart: alloy
@@ -14,26 +16,29 @@ spec:
         kind: HelmRepository
         name: grafana
         namespace: flux-system
+
   install:
     createNamespace: false
+
   values:
     controller:
       type: daemonset
+
     alloy:
       configMap:
-        create: true  
-      configMapContent: |
-        discovery.kubernetes "pods" {
-          role = "pod"
-        }
-
-        loki.source.kubernetes "pods" {
-          targets    = discovery.kubernetes.pods.targets
-          forward_to = [loki.write.default.receiver]
-        }
-
-        loki.write "default" {
-          endpoint {
-            url = "http://logging-loki:3100/loki/api/v1/push"
+        create: true
+        content: |
+          discovery.kubernetes "pods" {
+            role = "pod"
           }
-        }
+
+          loki.source.kubernetes "pods" {
+            targets    = discovery.kubernetes.pods.targets
+            forward_to = [loki.write.default.receiver]
+          }
+
+          loki.write "default" {
+            endpoint {
+              url = "http://logging-loki:3100/loki/api/v1/push"
+            }
+          }
