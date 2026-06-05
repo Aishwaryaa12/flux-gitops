@@ -32,6 +32,9 @@ spec:
 
       additionalDataSources:
         - name: Loki
+          uid: loki
           type: loki
           access: proxy
           url: http://logging-loki.logging.svc.cluster.local:3100
+          editable: true
+
