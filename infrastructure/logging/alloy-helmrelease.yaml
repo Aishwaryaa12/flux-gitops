@@ -21,7 +21,7 @@ spec:
       type: daemonset
     alloy:
       configMap:
-        create: false
+        create: true  
       configMapContent: |
         discovery.kubernetes "pods" {
           role = "pod"
