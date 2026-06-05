@@ -5,4 +5,5 @@ resources:
   - flux-system
   - infrastructure.yaml
   - secrets.yaml
+  - policies.yaml
   - apps.yaml
