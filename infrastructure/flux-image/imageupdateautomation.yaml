@@ -1,0 +1,33 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+
+metadata:
+  name: platform-images
+  namespace: flux-system
+
+spec:
+  interval: 1h
+
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+
+  git:
+    checkout:
+      ref:
+        branch: main
+
+    commit:
+      author:
+        name: Flux Bot
+        email: flux@cralyx.com
+
+      messageTemplate: |
+        chore(images): update container images
+
+    push:
+      branch: main
+
+  update:
+    strategy: Setters
+    path: ./

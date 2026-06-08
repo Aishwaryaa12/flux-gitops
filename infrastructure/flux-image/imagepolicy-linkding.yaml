@@ -11,4 +11,4 @@ spec:
 
   policy:
     semver:
-      range: ">=1.45.0"
+      range: "1.x"

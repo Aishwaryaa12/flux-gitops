@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: vaultwarden
-          image: vaultwarden/server:1.36.0
+          image: vaultwarden/server:1.36.0 # {"$imagepolicy": "flux-system:vaultwarden"}
 
           resources:
             requests:
