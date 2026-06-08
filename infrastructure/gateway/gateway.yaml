@@ -9,17 +9,13 @@ spec:
   gatewayClassName: traefik
 
   listeners:
-    - name: https
-      protocol: HTTPS
-      port: 443
+    - name: web
+
+      protocol: HTTP
+
+      port: 80
 
       hostname: "*.cralyx.com"
-
-      tls:
-        mode: Terminate
-        certificateRefs:
-          - kind: Secret
-            name: wildcard-cralyx-com-tls
 
       allowedRoutes:
         namespaces:
