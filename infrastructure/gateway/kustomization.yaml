@@ -3,3 +3,6 @@ kind: Kustomization
 
 resources:
   - gateway.yaml
+  - grafana-route.yaml
+  - vaultwarden-route.yaml
+  - linkding-route.yaml
