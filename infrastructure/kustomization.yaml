@@ -8,3 +8,4 @@ resources:
   - kyverno
   - logging
   - gateway
+  - flux-image
