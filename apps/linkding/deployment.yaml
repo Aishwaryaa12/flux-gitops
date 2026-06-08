@@ -2,59 +2,82 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: linkding
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: linkding
   namespace: linkding
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: linkding
+
   template:
     metadata:
       labels:
         app: linkding
+
     spec:
       containers:
         - name: linkding
-          image: sissbruecker/linkding:latest
+          image: sissbruecker/linkding:1.45.0
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
           ports:
             - containerPort: 9090
               name: http
+
           volumeMounts:
             - name: data
               mountPath: /etc/linkding/data
+
       volumes:
         - name: data
-          persistentVolumeClaim: 
+          persistentVolumeClaim:
             claimName: linkding-data
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: linkding
   namespace: linkding
+
 spec:
+  selector:
+    app: linkding
+
   ports:
     - port: 80
       targetPort: 9090
-  selector:
-    app: linkding
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: linkding
   namespace: linkding
+
 spec:
   ingressClassName: traefik
+
   tls:
     - hosts:
         - linkding.cralyx.com
-      secretName: linkding-tls 
+      secretName: linkding-tls
+
   rules:
     - host: linkding.cralyx.com
       http:
