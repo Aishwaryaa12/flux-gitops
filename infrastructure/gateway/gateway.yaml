@@ -9,9 +9,9 @@ spec:
   gatewayClassName: traefik
 
   listeners:
-    - name: https
+    - name: websecure
       protocol: HTTPS
-      port: 443
+      port: 8443
 
       hostname: "*.cralyx.com"
 
