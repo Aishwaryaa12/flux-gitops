@@ -32,97 +32,20 @@ Secrets are encrypted with SOPS/Age and committed to the repository. Admission p
 ---
 ## Architecture Overview
 
+<p align="center">
+  <img
+    src="docs/images/architecture-overview.png"
+    alt="Cloud-Native Homelab Platform Architecture"
+    width="100%"
+  />
+</p>
 
-```mermaid
-flowchart LR
-    %% --- Styling Classes ---
-    classDef gitops fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
-    classDef infra fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
-    classDef telemetry fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
-    classDef app fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
-    classDef secret fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff
-    
-    %% Brand Colors for External Services
-    classDef github fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#fff
-    classDef docker fill:#0ea5e9,stroke:#0369a1,stroke-width:2px,color:#fff
-    classDef cloudflare fill:#f97316,stroke:#c2410c,stroke-width:2px,color:#fff
-
-    %% --- External Dependencies ---
-    subgraph External["External Resources"]
-        direction TB
-        REPO[("GitHub\n(Single Source of Truth)")]:::github
-        DH["Docker Hub"]:::docker
-        CF_API["Cloudflare API\n(ACME DNS-01)"]:::cloudflare
-        CF_DNS["Cloudflare DNS\n(*.cralyx.com)"]:::cloudflare
-    end
-
-    %% --- Kubernetes Environment ---
-    subgraph Cluster["Kubernetes Cluster"]
-        direction TB
-        
-        subgraph Flux["GitOps Control Plane"]
-            SRC["Source Controller"]:::gitops
-            KUST["Kustomize Controller"]:::gitops
-            HELM["Helm Controller"]:::gitops
-            IMG["Image Reflector & Automation"]:::gitops
-        end
-        
-        subgraph Security["Security & Secrets"]
-            SOPS["SOPS / Age"]:::secret
-            CF_SEC["API Token Secret"]:::secret
-            CERTMGR["cert-manager"]:::infra
-            WILDCARD["TLS Wildcard"]:::infra
-            KYVERNO["Kyverno Policies"]:::infra
-        end
-        
-        subgraph Network["Ingress & Gateway"]
-            TRAEFIK["Traefik v3\n(Gateway API mode)"]:::infra
-            GW["Gateway\n(:8443)"]:::infra
-        end
-
-        subgraph Observability["Telemetry"]
-            ALLOY["Grafana Alloy"]:::telemetry
-            PROM["Prometheus"]:::telemetry
-            LOKI["Loki"]:::telemetry
-            GRAF["Grafana"]:::telemetry
-        end
-
-        subgraph Apps["Workloads"]
-            VW["vault.cralyx.com"]:::app
-            LD["linkding.cralyx.com"]:::app
-        end
-    end
-
-    %% --- State Reconciliation Flow ---
-    REPO -->|"polls 10m"| SRC
-    SRC --> KUST
-    IMG -.->|"scans 1h"| DH
-    IMG -->|"commits tag"| REPO
-
-    %% --- Kustomize Layering ---
-    KUST -->|"Layer 1"| SOPS
-    KUST -->|"Layer 2"| Network
-    KUST -->|"Layer 3"| Apps
-    
-    %% --- Helm Management ---
-    HELM -.->|"manages"| Observability
-    HELM -.->|"manages"| Security
-
-    %% --- Secrets & Certificate Flow ---
-    SOPS --> CF_SEC --> CERTMGR
-    CERTMGR <-->|"DNS-01 auth"| CF_API
-    CERTMGR --> WILDCARD --> GW
-
-    %% --- External Traffic Flow ---
-    CF_DNS -->|"HTTPS :443 → :8443"| GW
-    GW -->|"HTTPRoute"| VW & LD
-
-    %% --- Telemetry Flow ---
-    ALLOY -->|"metrics"| PROM
-    ALLOY -->|"logs"| LOKI
-    PROM & LOKI --> GRAF
-```
-
+<p align="center">
+  <em>
+    High-level architecture showing GitOps reconciliation, security controls,
+    networking, observability, and application delivery.
+  </em>
+</p>
 
 ---
 
