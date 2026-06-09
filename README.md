@@ -272,57 +272,6 @@ sequenceDiagram
 
 The image automation pipeline creates a fully closed update loop. New container versions are discovered, policy-evaluated, committed to Git, and deployed without any human action.
 
-### How the Loop Works
-
-```mermaid
-%%{init: {
-  'theme': 'base',
-  'themeVariables': {
-    'actorBkg': '#1e293b',
-    'actorBorder': '#334155',
-    'actorTextColor': '#ffffff',
-    'actorLineColor': '#64748b',
-    'signalColor': '#0f172a',
-    'signalTextColor': '#0f172a',
-    'sequenceNumberColor': '#ffffff',
-    'sequenceNumberBkg': '#3b82f6'
-  }
-}}%%
-sequenceDiagram
-    autonumber
-
-    %% Logical Groupings with Background Colors
-    box rgb(255, 237, 213) "External Registry"
-        participant DH as Docker Hub
-    end
-
-    box rgb(219, 234, 254) "Flux Image Automation"
-        participant IR as ImageRepository
-        participant IP as ImagePolicy (semver 1.x)
-        participant IUA as ImageUpdateAutomation
-    end
-
-    box rgb(226, 232, 240) "Version Control"
-        participant Git as Git (main)
-    end
-
-    box rgb(233, 213, 255) "Cluster Operations"
-        participant Flux as Flux Reconciler
-        participant K8s as Cluster
-    end
-
-    %% Flow Execution
-    DH->>IR: New tag published (e.g. vaultwarden:1.37.0)
-    IR->>IR: Registry scan every 1h
-    IR->>IP: Evaluate tags against policy
-    IP->>IP: 1.37.0 matches range "1.x" ✓
-    IP->>IUA: Resolved: vaultwarden → 1.37.0
-    IUA->>Git: git commit as "Flux Bot"<br/>"chore(images): update container images"
-    Git->>Flux: Revision change detected on next poll
-    Flux->>K8s: Apply updated Deployment
-    K8s->>K8s: Rolling update to 1.37.0
-```
-
 ### The Setter Annotation
 
 The `ImageUpdateAutomation` controller uses the `Setters` strategy, scanning the repository for structured marker comments and rewriting the image tag in-place:
