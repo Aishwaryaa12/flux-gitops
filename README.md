@@ -221,42 +221,6 @@ The `1.x` upper bound is the deliberate control point. Major version bumps may c
 Image automation and the Kyverno `disallow-latest` policy are mutually reinforcing. Automation ensures all production images carry pinned semver tags, exactly what the policy requires. Kyverno acts as an independent, synchronous check: if a `:latest` tag were ever committed manually, it generates an audit violation in `PolicyReport` before it could be acted on.
 
 ---
-## Application Delivery
-
-Applications are defined as plain Kubernetes manifests, no Helm chart wrapping. This keeps the resource model transparent and avoids rendering indirection for workloads with minimal configuration surface.
-
-### Vaultwarden
-
-```yaml
-image: vaultwarden/server:1.36.0  # {"$imagepolicy": "flux-system:vaultwarden"}
-resources:
-  requests: { cpu: 50m,  memory: 64Mi  }
-  limits:   { cpu: 250m, memory: 256Mi }
-env:
-  - name: SIGNUPS_ALLOWED
-    value: "false"                      # closed instance; registration disabled
-  - name: DOMAIN
-    value: "https://vault.cralyx.com"
-```
-
-Data persists to a PVC mounted at `/data`. k3s's `local-path` StorageClass provisions it as a host-path volume.
-
-### Linkding
-
-```yaml
-image: sissbruecker/linkding:1.45.0  # {"$imagepolicy": "flux-system:linkding"}
-resources:
-  requests: { cpu: 50m,  memory: 128Mi }
-  limits:   { cpu: 500m, memory: 512Mi }
-```
-
-Data persists at `/etc/linkding/data`. The Service maps port `80` to the container's port `9090`.
-
-### What Both Workloads Have in Common
-
-Both satisfy every active Kyverno policy: pinned image tags and explicit CPU/memory `requests` and `limits`. This is not incidental, it reflects deliberate alignment between policy definitions and workload configuration. Neither application defines an `Ingress` resource; routing is handled at the Gateway API layer via `HTTPRoute` resources, keeping routing concerns out of application manifests.
-
----
 
 ## Networking Architecture
 
@@ -296,7 +260,7 @@ The move from `Ingress` to Gateway API is an ownership boundary, not just an API
 
 `allowedRoutes.namespaces.from: All` is correct for a single-operator platform where every namespace is trusted. A multi-team environment would use `from: Selector` with namespace label constraints.
 
-**A non-obvious constraint:** k3s's Traefik maps named entrypoints (`web`, `websecure`) to internal ports `8000` and `8443`  not the external service ports `80` and `443`. Gateway API listeners must use the **internal entrypoint port**. Using `port: 443` in the listener spec causes listener validation to fail because Traefik's Gateway controller matches listeners by entrypoint port, not service port. This is not prominently documented and was identified through Traefik controller log inspection. The correct configuration is `port: 8443` in the Gateway listener with `hostPort: 443` in the `HelmChartConfig` the external port and the listener port are intentionally different.
+**A non-obvious constraint:** k3s's Traefik maps named entrypoints (`web`, `websecure`) to internal ports `8000` and `8443`  not the external service ports `80` and `443`. Gateway API listeners must use the **internal entrypoint port**. Using `port: 443` in the listener spec causes listener validation to fail because Traefik's Gateway controller matches listeners by entrypoint port, not service port. The correct configuration is `port: 8443` in the Gateway listener with `hostPort: 443` in the `HelmChartConfig` the external port and the listener port are intentionally different.
 
 `hostPort` binds Traefik directly to the node's network interface, bypassing the need for a `LoadBalancer` Service or MetalLB.
 
@@ -397,45 +361,13 @@ All public endpoints are HTTPS-only. No HTTP application endpoint is exposed to 
 ---
 ## Engineering Decisions and Tradeoffs
 
-### k3s Built-in Traefik via `HelmChartConfig`
-
-**Decision**: Configure k3s's bundled Traefik via `HelmChartConfig` rather than disabling it and deploying a standalone Flux `HelmRelease`.
-
-**Rationale**: k3s runs its own internal Helm controller managing the Traefik release. A Flux `HelmRelease` targeting the same release name causes ownership conflicts, both controllers attempt to reconcile the same objects. Working with k3s's grain via `HelmChartConfig` avoids the conflict and reduces the total number of controllers in the cluster.
-
-**Tradeoff**: Traefik upgrades are tied to k3s releases rather than independently managed. `failurePolicy: reinstall` is a blunt recovery mechanism, a misconfigured value triggers a full reinstall, not a rollback. A dedicated HelmRelease with `upgrade.remediation.strategy: rollback` would handle failure more gracefully at the cost of the ownership conflict described above.
-
-### Wildcard Certificate vs Per-Application Certificates
-
-**Decision**: A single `*.cralyx.com` wildcard certificate rather than per-app `Certificate` resources.
-
-**Rationale**: Adding a new subdomain requires only an `HTTPRoute`. No cert-manager interaction, no ACME rate limit exposure, one secret to manage and renew. During rapid iteration, per-app certs introduce friction and rate limit risk without meaningful benefit.
-
-**Tradeoff**: Certificate compromise affects all subdomains simultaneously. The wildcard secret's placement in `cert-manager` constrains Gateway placement, the Gateway must be co-located with its TLS secret or use a cross-namespace `ReferenceGrant`. Per-app certs would provide blast-radius isolation at the cost of this operational simplicity.
-
-### SOPS/Age vs External Secrets Operator
-
-**Decision**: SOPS-encrypted secrets committed to Git rather than pulling from an external vault.
-
-**Rationale**: No runtime dependency on an external service. The cluster is fully self-contained reconstructable offline from this repository and the Age key alone. Secret history is auditable in Git.
-
-**Tradeoff**: Rotating the Age key requires re-encrypting every file matching the `creation_rules` path regex, a bulk operation rather than a single key rotation event. No per-access audit log at the secret read level. External Secrets Operator with HashiCorp Vault would provide both at the cost of an additional operational dependency.
-
-### Image Automation Committing Directly to `main`
-
-**Decision**: `ImageUpdateAutomation` pushes updated image tags directly to `main` without a pull request gate.
-
-**Rationale**: For patch and minor releases within `1.x`, automated updates are safe by policy definition. Requiring a human-approved PR for every image update creates toil that defeats the automation's purpose.
-
-**Tradeoff**: No review gate between a published Docker Hub tag and a running container. A compromised upstream image publishing a `1.x`-compliant tag deploys within ~1 hour of publication. Mitigated by the `1.x` upper bound and the established security track records of both projects. Cosign image verification would close this gap with a cryptographic guarantee.
-
-### Kyverno Policies in `Audit` Mode
-
-**Decision**: Both `ClusterPolicy` resources use `validationFailureAction: Audit` rather than `Enforce`.
-
-**Rationale**: Platform components deployed by Helm charts may not satisfy every policy by default. `Enforce` mode during bootstrap could block infrastructure from coming up. `Audit` provides visibility without instability during the build phase.
-
-**Tradeoff**: Non-compliant pods from Helm charts can run without being blocked. The intended path is to audit violations, adjust chart values or add exclusions, then promote each policy to `Enforce` incrementally.
+| Architectural Decision | Rationale | Accepted Tradeoff |
+| --- | --- | --- |
+| **k3s Built-in Traefik via `HelmChartConfig**` | Avoids controller ownership conflicts with k3s's internal Helm controller. Reduces the total number of controllers running in the cluster. | Upgrades are tied directly to k3s releases. Uses a blunt `reinstall` failure policy rather than a graceful rollback mechanism. |
+| **Wildcard Certificate (`*.cralyx.com`)** | Frictionless iteration; adding a subdomain requires only an `HTTPRoute`. Avoids ACME rate limits and reduces secret management overhead to a single object. | Shared blast radius if the certificate is compromised. Constrains Gateway placement to co-locate with the TLS secret or requires a cross-namespace `ReferenceGrant`. |
+| **SOPS/Age vs External Secrets Operator** | Completely self-contained cluster capable of being reconstructed offline. No external runtime dependencies. Secret history is highly auditable in Git. | Key rotation is a bulk operation requiring re-encryption of all files. Lacks the per-access audit logging that a system like HashiCorp Vault provides. |
+| **Image Automation Committing Directly to `main**` | Eliminates manual toil for safe minor/patch updates within defined policy boundaries (e.g., `1.x`). Fulfills the goal of continuous, human-free reconciliation. | Removes the review gate between an upstream Docker Hub tag and a running container. A compromised upstream image could deploy automatically. |
+| **Kyverno Policies in `Audit` Mode** | Prevents strict `Enforce` policies from blocking third-party infrastructure Helm charts from coming up during the initial bootstrap phase. | Non-compliant pods can run without being blocked. Relies on the operator to actively review the `PolicyReport` and adjust values before flipping to `Enforce`. |
 
 ---
 ## Current Limitations and Next Steps
