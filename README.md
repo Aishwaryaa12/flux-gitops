@@ -334,7 +334,7 @@ kubectl describe clusterpolicyreport
 All public endpoints are HTTPS-only. No HTTP application endpoint is exposed to the public internet. The wildcard certificate is issued and renewed by cert-manager automatically. Vaultwarden is configured with `SIGNUPS_ALLOWED=false` the instance accepts no new registrations and serves a known, fixed set of users.
 
 ---
-## Engineering Decisions and Tradeoffs
+## Architectural Decisions and Tradeoffs
 
 | Architectural Decision | Rationale | Accepted Tradeoff |
 | --- | --- | --- |
