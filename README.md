@@ -315,31 +315,6 @@ graph TD
     style SECRET fill:#4a235a,color:#fff
 ```
 
-
-The `.sops.yaml` scopes encryption precisely:
-
-```yaml
-creation_rules:
-  - path_regex: secrets/.*\.yaml           # only files under secrets/
-    encrypted_regex: '^(data|stringData)$'  # only Secret value fields, not metadata
-    age: age1n7qx554qx2h7tlascwe4nlsp0lh04pr5dlzwrx23vhzp7jada4tqny07rc
-```
-
-Only `data` and `stringData` fields are encrypted. The rest of each Secret manifest `name`, `namespace`, `labels` remains readable in plaintext, keeping the repository auditable without requiring decryption. The Age private key is stored as a Kubernetes Secret in `flux-system` during bootstrap and is the only credential that cannot be sourced from this repository.
-
-SOPS decryption is explicitly scoped to the `secrets` Kustomization only:
-
-```yaml
-# clusters/production/secrets.yaml
-spec:
-  decryption:
-    provider: sops
-    secretRef:
-      name: sops-age
-```
-
-No other Kustomization has `decryption` configured. Decryption is an explicit, auditable capability and not a cluster-wide default.
-
 ### Admission Control: Kyverno
 
 **`disallow-latest-tag`** rejects any Pod where a container uses the `:latest` image tag. Mutable tags make the running image unauditable, you cannot determine what code is running from the manifest, and you cannot roll back to a known state. All platform workloads satisfy this policy because image automation enforces pinned semver tags as process.
