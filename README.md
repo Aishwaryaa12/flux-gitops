@@ -11,11 +11,10 @@
 - [Repository Structure](#repository-structure)
 - [GitOps Workflow](#gitops-workflow)
 - [Image Automation](#image-automation)
-- [Application Delivery](#application-delivery)
 - [Networking Architecture](#networking-architecture)
 - [Observability Stack](#observability-stack)
 - [Security Architecture](#security-architecture)
-- [Engineering Decisions and Tradeoffs](#engineering-decisions-and-tradeoffs)
+- [Architectural Decisions and Tradeoffs](#architectural-decisions-and-tradeoffs)
 - [Known Gaps and Honest Assessment](#known-gaps-and-honest-assessment)
 
 ---
