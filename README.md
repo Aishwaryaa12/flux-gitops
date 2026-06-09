@@ -148,14 +148,14 @@ graph LR
 %%{init: {
   'theme': 'base',
   'themeVariables': {
-    'actorBkg': '#f0f9ff',
-    'actorBorder': '#0284c7',
-    'actorTextColor': '#0f172a',
-    'actorLineColor': '#0284c7',
-    'signalColor': '#0369a1',
-    'signalTextColor': '#0f172a',
-    'sequenceNumberColor': '#ffffff',
-    'sequenceNumberBkg': '#0ea5e9'
+    'actorBkg': '#e0f2fe',          /* Very light sky blue for the boxes */
+    'actorBorder': '#0ea5e9',       /* Bright sky blue for borders */
+    'actorTextColor': '#082f49',    /* Deep navy (almost black) for high readability */
+    'actorLineColor': '#7dd3fc',    /* Soft blue for the vertical lifelines */
+    'signalColor': '#0284c7',       /* Strong blue for the action arrows */
+    'signalTextColor': '#082f49',   /* Deep navy text for the arrow labels */
+    'sequenceNumberColor': '#ffffff', 
+    'sequenceNumberBkg': '#0284c7'  /* Strong blue for the step numbers */
   }
 }}%%
 sequenceDiagram
@@ -166,7 +166,7 @@ sequenceDiagram
     participant Git as Git (main)
     
     %% Cluster Boundary Grouping
-    box rgb(224, 242, 254) "Kubernetes Cluster Boundary"
+    box rgb(240, 249, 255) "Kubernetes Cluster Boundary"
         participant Src as Source Controller
         participant Kust as Kustomize Controller
         participant SOPS as SOPS / Age
