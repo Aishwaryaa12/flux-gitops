@@ -438,21 +438,13 @@ All public endpoints are HTTPS-only. No HTTP application endpoint is exposed to 
 **Tradeoff**: Non-compliant pods from Helm charts can run without being blocked. The intended path is to audit violations, adjust chart values or add exclusions, then promote each policy to `Enforce` incrementally.
 
 ---
-## Known Gaps and Honest Assessment
+## Current Limitations and Next Steps
 
-| Gap                                        | Impact                                                        | Planned Resolution                                                                |
-| ------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Kyverno policies in `Audit`, not `Enforce` | Non-compliant Helm chart pods run unblocked                   | Audit chart defaults; promote policies to `Enforce` incrementally                 |
-| `allowedRoutes.namespaces.from: All`       | Any namespace can attach HTTPRoutes to the Gateway            | Acceptable now; switch to `Selector` if untrusted namespaces are added            |
-| Image automation commits direct to `main`  | No review gate on automated tag updates                       | Acceptable for `1.x` range; Cosign verification would add supply chain confidence |
-| Single-node cluster                        | Node failure = full platform outage                           | Acceptable for homelab; multi-node k3s requires etcd HA                           |
-| No image signature verification            | Semver-compliant but compromised image would be auto-deployed | Add Cosign + Kyverno `verifyImages` rule                                          |
-| No PVC backup                              | Vaultwarden and Linkding data has no offsite copy             | Add Velero with an S3-compatible backend                                          |
-
-
-
-
-
-
-
-
+| Gap | Planned Resolution |
+|------|------|
+| Kyverno policies in `Audit`, not `Enforce` | Audit chart defaults and gradually promote policies to `Enforce` once all workloads are compliant |
+| `allowedRoutes.namespaces.from: All` | Move to namespace selectors if additional teams or untrusted namespaces are introduced |
+| Image automation commits directly to `main` | Introduce Cosign verification and potentially a PR-based workflow for higher-risk workloads |
+| Single-node cluster | Add additional nodes and migrate to an HA control plane when availability becomes a requirement |
+| No image signature verification | Implement Cosign and Kyverno `verifyImages` policies |
+| No PVC backup strategy | Introduce Velero with an S3-compatible backend for backup and recovery |
