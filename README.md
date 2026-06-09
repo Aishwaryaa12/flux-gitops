@@ -34,66 +34,93 @@ Secrets are encrypted with SOPS/Age and committed to the repository. Admission p
 
 
 ```mermaid
-graph TB
-    subgraph Git["Git — github.com (main branch)"]
-        REPO[("Repository\nsingle source of truth")]
+flowchart LR
+    %% --- Styling Classes ---
+    classDef gitops fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff
+    classDef infra fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff
+    classDef telemetry fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff
+    classDef app fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff
+    classDef secret fill:#ef4444,stroke:#b91c1c,stroke-width:2px,color:#fff
+    
+    %% Brand Colors for External Services
+    classDef github fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#fff
+    classDef docker fill:#0ea5e9,stroke:#0369a1,stroke-width:2px,color:#fff
+    classDef cloudflare fill:#f97316,stroke:#c2410c,stroke-width:2px,color:#fff
+
+    %% --- External Dependencies ---
+    subgraph External["External Resources"]
+        direction TB
+        REPO[("GitHub\n(Single Source of Truth)")]:::github
+        DH["Docker Hub"]:::docker
+        CF_API["Cloudflare API\n(ACME DNS-01)"]:::cloudflare
+        CF_DNS["Cloudflare DNS\n(*.cralyx.com)"]:::cloudflare
     end
 
-    subgraph Flux["flux-system"]
-        SRC["Source Controller\npoll every 10m"]
-        KUST["Kustomize Controller"]
-        HELM["Helm Controller"]
-        IMG["Image Reflector +\nAutomation Controller"]
+    %% --- Kubernetes Environment ---
+    subgraph Cluster["Kubernetes Cluster"]
+        direction TB
+        
+        subgraph Flux["GitOps Control Plane"]
+            SRC["Source Controller"]:::gitops
+            KUST["Kustomize Controller"]:::gitops
+            HELM["Helm Controller"]:::gitops
+            IMG["Image Reflector & Automation"]:::gitops
+        end
+        
+        subgraph Security["Security & Secrets"]
+            SOPS["SOPS / Age"]:::secret
+            CF_SEC["API Token Secret"]:::secret
+            CERTMGR["cert-manager"]:::infra
+            WILDCARD["TLS Wildcard"]:::infra
+            KYVERNO["Kyverno Policies"]:::infra
+        end
+        
+        subgraph Network["Ingress & Gateway"]
+            TRAEFIK["Traefik v3\n(Gateway API mode)"]:::infra
+            GW["Gateway\n(:8443)"]:::infra
+        end
+
+        subgraph Observability["Telemetry"]
+            ALLOY["Grafana Alloy"]:::telemetry
+            PROM["Prometheus"]:::telemetry
+            LOKI["Loki"]:::telemetry
+            GRAF["Grafana"]:::telemetry
+        end
+
+        subgraph Apps["Workloads"]
+            VW["vault.cralyx.com"]:::app
+            LD["linkding.cralyx.com"]:::app
+        end
     end
 
-    subgraph SecretsLayer["secrets layer"]
-        SOPS["SOPS / Age decryption"]
-        CF_SEC["cloudflare-api-token Secret"]
-    end
-
-    subgraph Infra["infrastructure"]
-        TRAEFIK["Traefik v3\nk3s built-in · Gateway API mode"]
-        GW["traefik-gateway\nns: cert-manager · *.cralyx.com :8443"]
-        CERTMGR["cert-manager\nClusterIssuer: letsencrypt-production"]
-        WILDCARD["wildcard-cralyx-com-tls"]
-        KYVERNO["Kyverno"]
-        PROM["Prometheus + Grafana"]
-        LOKI["Loki"]
-        ALLOY["Grafana Alloy · DaemonSet"]
-    end
-
-    subgraph Apps["application namespaces"]
-        VW["vaultwarden · vault.cralyx.com"]
-        LD["linkding · linkding.cralyx.com"]
-    end
-
-    subgraph Policies["policies"]
-        KP1["disallow-latest-tag"]
-        KP2["require-resource-limits"]
-    end
-
-    subgraph CF["Cloudflare"]
-        CF_DNS["DNS Proxy · *.cralyx.com"]
-        CF_API["DNS API · ACME DNS-01"]
-    end
-
-    REPO -->|"poll 10m"| SRC
+    %% --- State Reconciliation Flow ---
+    REPO -->|"polls 10m"| SRC
     SRC --> KUST
-    KUST -->|"layer 1 · decrypt"| SOPS
+    IMG -.->|"scans 1h"| DH
+    IMG -->|"commits tag"| REPO
+
+    %% --- Kustomize Layering ---
+    KUST -->|"Layer 1"| SOPS
+    KUST -->|"Layer 2"| Network
+    KUST -->|"Layer 3"| Apps
+    
+    %% --- Helm Management ---
+    HELM -.->|"manages"| Observability
+    HELM -.->|"manages"| Security
+
+    %% --- Secrets & Certificate Flow ---
     SOPS --> CF_SEC --> CERTMGR
-    CERTMGR <-->|"DNS-01"| CF_API
+    CERTMGR <-->|"DNS-01 auth"| CF_API
     CERTMGR --> WILDCARD --> GW
-    KUST -->|"layer 2"| Infra
-    KUST -->|"layer 3"| Apps
-    KUST -->|"layer 3"| Policies
-    HELM --> CERTMGR & KYVERNO & PROM & LOKI & ALLOY
-    IMG -->|"git commit · updated tag"| REPO
-    IMG -.->|"scan every 1h"| DH["Docker Hub"]
-    GW -->|"HTTPRoute"| VW & LD
+
+    %% --- External Traffic Flow ---
     CF_DNS -->|"HTTPS :443 → :8443"| GW
-    ALLOY -->|"logs"| LOKI
+    GW -->|"HTTPRoute"| VW & LD
+
+    %% --- Telemetry Flow ---
     ALLOY -->|"metrics"| PROM
-    PROM & LOKI --> GRAF["Grafana"]
+    ALLOY -->|"logs"| LOKI
+    PROM & LOKI --> GRAF
 ```
 
 
@@ -196,15 +223,36 @@ graph LR
 ### Full Reconciliation Sequence
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'actorBkg': '#f0f9ff',
+    'actorBorder': '#0284c7',
+    'actorTextColor': '#0f172a',
+    'actorLineColor': '#0284c7',
+    'signalColor': '#0369a1',
+    'signalTextColor': '#0f172a',
+    'sequenceNumberColor': '#ffffff',
+    'sequenceNumberBkg': '#0ea5e9'
+  }
+}}%%
 sequenceDiagram
+    autonumber
+    
+    %% External Participants
     participant Dev as Engineer
     participant Git as Git (main)
-    participant Src as Source Controller
-    participant Kust as Kustomize Controller
-    participant SOPS as SOPS / Age
-    participant Kyverno as Kyverno Webhook
-    participant K8s as Kubernetes API
+    
+    %% Cluster Boundary Grouping
+    box rgb(224, 242, 254) "Kubernetes Cluster Boundary"
+        participant Src as Source Controller
+        participant Kust as Kustomize Controller
+        participant SOPS as SOPS / Age
+        participant Kyverno as Kyverno Webhook
+        participant K8s as Kubernetes API
+    end
 
+    %% Flow Execution
     Dev->>Git: git push
     Src->>Git: Poll every 10 minutes
     Src->>Src: Detect revision change, fetch artifact
@@ -227,21 +275,49 @@ The image automation pipeline creates a fully closed update loop. New container 
 ### How the Loop Works
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'actorBkg': '#1e293b',
+    'actorBorder': '#334155',
+    'actorTextColor': '#ffffff',
+    'actorLineColor': '#64748b',
+    'signalColor': '#0f172a',
+    'signalTextColor': '#0f172a',
+    'sequenceNumberColor': '#ffffff',
+    'sequenceNumberBkg': '#3b82f6'
+  }
+}}%%
 sequenceDiagram
-    participant DH as Docker Hub
-    participant IR as ImageRepository
-    participant IP as ImagePolicy (semver 1.x)
-    participant IUA as ImageUpdateAutomation
-    participant Git as Git (main)
-    participant Flux as Flux Reconciler
-    participant K8s as Cluster
+    autonumber
 
+    %% Logical Groupings with Background Colors
+    box rgb(255, 237, 213) "External Registry"
+        participant DH as Docker Hub
+    end
+
+    box rgb(219, 234, 254) "Flux Image Automation"
+        participant IR as ImageRepository
+        participant IP as ImagePolicy (semver 1.x)
+        participant IUA as ImageUpdateAutomation
+    end
+
+    box rgb(226, 232, 240) "Version Control"
+        participant Git as Git (main)
+    end
+
+    box rgb(233, 213, 255) "Cluster Operations"
+        participant Flux as Flux Reconciler
+        participant K8s as Cluster
+    end
+
+    %% Flow Execution
     DH->>IR: New tag published (e.g. vaultwarden:1.37.0)
     IR->>IR: Registry scan every 1h
     IR->>IP: Evaluate tags against policy
     IP->>IP: 1.37.0 matches range "1.x" ✓
     IP->>IUA: Resolved: vaultwarden → 1.37.0
-    IUA->>Git: git commit as "Flux Bot"\n"chore(images): update container images"
+    IUA->>Git: git commit as "Flux Bot"<br/>"chore(images): update container images"
     Git->>Flux: Revision change detected on next poll
     Flux->>K8s: Apply updated Deployment
     K8s->>K8s: Rolling update to 1.37.0
@@ -316,15 +392,25 @@ Both satisfy every active Kyverno policy: pinned image tags and explicit CPU/mem
 
 ```mermaid
 graph TB
-    Browser["Client Browser"]
-    CF["Cloudflare\nDNS Proxy — *.cralyx.com → cluster IP"]
-    GW["Traefik Gateway — traefik-gateway\nnamespace: cert-manager\nport: 8443 · TLS Terminate\nhostname: *.cralyx.com"]
-    CERT["Secret: wildcard-cralyx-com-tls\nLet's Encrypt *.cralyx.com"]
-    VW_ROUTE["HTTPRoute: vault.cralyx.com"]
-    LD_ROUTE["HTTPRoute: linkding.cralyx.com"]
-    VW_SVC["Service: vaultwarden :80"]
-    LD_SVC["Service: linkding :80"]
+    %% --- Style Definitions ---
+    classDef client fill:#f8f9fa,stroke:#adb5bd,stroke-width:2px,color:#212529
+    classDef cloudflare fill:#f6821f,stroke:#d35400,stroke-width:2px,color:#ffffff
+    classDef gateway fill:#24a1de,stroke:#1a7cae,stroke-width:2px,color:#ffffff
+    classDef cert fill:#2ecc71,stroke:#27ae60,stroke-width:2px,color:#ffffff
+    classDef route fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#ffffff
+    classDef service fill:#f1c40f,stroke:#d68910,stroke-width:2px,color:#212529
 
+    %% --- Nodes ---
+    Browser["Client Browser"]:::client
+    CF["Cloudflare\nDNS Proxy — *.cralyx.com → cluster IP"]:::cloudflare
+    GW["Traefik Gateway — traefik-gateway\nnamespace: cert-manager\nport: 8443 · TLS Terminate\nhostname: *.cralyx.com"]:::gateway
+    CERT["Secret: wildcard-cralyx-com-tls\nLet's Encrypt *.cralyx.com"]:::cert
+    VW_ROUTE["HTTPRoute: vault.cralyx.com"]:::route
+    LD_ROUTE["HTTPRoute: linkding.cralyx.com"]:::route
+    VW_SVC["Service: vaultwarden :80"]:::service
+    LD_SVC["Service: linkding :80"]:::service
+
+    %% --- Connections ---
     Browser -->|"HTTPS :443"| CF
     CF -->|"proxy → :8443"| GW
     GW -.->|"TLS cert"| CERT
